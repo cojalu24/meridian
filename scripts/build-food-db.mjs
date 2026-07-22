@@ -70,19 +70,26 @@ const foods = new Map() // lowercase name -> entry
 
 function addFood(name, kcal, protein, carbs, fat, servings, micros) {
   if (!name) return
+  // Scrub USDA bureaucratic suffixes out of display names.
+  name = name.replace(/\s*\(Includes foods for USDA's Food Distribution Program\)/i, '').trim()
   protein = protein ?? 0
   carbs = carbs ?? 0
   fat = fat ?? 0
   // Energy fallback: compute from macros if no energy nutrient present.
   if (kcal == null) kcal = protein * 4 + carbs * 4 + fat * 9
   if (kcal === 0 && protein === 0 && carbs === 0 && fat === 0) return
+  // On a name collision, never let an entry without serving sizes replace one
+  // that has them (Foundation re-measures some SR foods but drops portions).
+  const existing = foods.get(name.toLowerCase())
+  if (existing && existing.s.length > 0 && servings.length === 0) return
+
   const entry = {
     n: name,
     k: Math.round(kcal),
     p: round1(protein),
     c: round1(carbs),
     f: round1(fat),
-    s: servings.slice(0, 4),
+    s: servings.slice(0, 6),
   }
   if (micros && Object.keys(micros).length > 0) {
     // Round to 2 decimals; drop zeros to keep the file small.

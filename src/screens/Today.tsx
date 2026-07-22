@@ -315,9 +315,9 @@ function FoodPicker({
   }, [data.foodLog, data.foods])
 
   const results = useMemo(
-    () => (q.trim() ? searchFoods(data.foods, q, 10) : recents),
+    () => (q.trim() ? searchFoods(data.foods, q, 10, data.foodLog) : recents),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- dbReady re-runs the search once the database arrives
-    [q, data.foods, recents, dbReady],
+    [q, data.foods, data.foodLog, recents, dbReady],
   )
 
   const select = (food: Food) => {
