@@ -74,7 +74,15 @@ export default function Chart({ series, height = 220, yLabel, xLabels }: Props) 
             )}
             {(s.dots || s.points.length === 1) &&
               s.points.map((p, i) => (
-                <circle key={i} cx={sx(p.x)} cy={sy(p.y)} r={2.5} fill={s.color} />
+                <circle
+                  key={i}
+                  cx={sx(p.x)}
+                  cy={sy(p.y)}
+                  r={3}
+                  fill="var(--panel)"
+                  stroke={s.color}
+                  strokeWidth={1.8}
+                />
               ))}
           </g>
         ))}

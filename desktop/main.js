@@ -76,7 +76,7 @@ async function createWindow() {
     width: 1180,
     height: 860,
     title: 'Meridian',
-    backgroundColor: '#0e1116',
+    backgroundColor: '#f4f3f1',
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   })
 

@@ -50,36 +50,58 @@ export default function Trends({ data }: { data: AppData }) {
       </header>
 
       <section className="card">
-        <h2>Weight</h2>
+        <h2>Weight Trend</h2>
+        <StatHead
+          stats={[
+            {
+              label: 'Average',
+              value: avg(weightSeries.map((p) => p.scale)),
+              unit,
+              decimals: 1,
+            },
+            {
+              label: 'Difference',
+              value: diff(weightSeries.map((p) => p.trend)),
+              unit,
+              decimals: 1,
+              signed: true,
+            },
+          ]}
+        />
         <Chart
           yLabel={unit}
           series={[
             {
-              label: `Scale weight (${unit})`,
-              color: 'var(--muted-line)',
+              label: 'Scale Weight',
+              color: 'var(--weight-soft)',
               points: weightSeries.map((p) => ({ x: p.x, y: p.scale })),
-              dots: true,
             },
             {
-              label: `Trend (${unit})`,
-              color: 'var(--accent)',
+              label: 'Trend Weight',
+              color: 'var(--weight)',
               points: weightSeries.map((p) => ({ x: p.x, y: p.trend })),
+              dots: true,
             },
           ]}
         />
       </section>
 
       <section className="card">
-        <div className="row-between">
-          <h2>Calories</h2>
-          <span className="dim">
-            Maintenance estimate: {tdee.tdee} kcal
-            {tdee.calibrated ? '' : ` (still learning — ${tdee.daysOfData} days of paired data so far)`}
-          </span>
-        </div>
+        <h2>Expenditure</h2>
+        <StatHead
+          stats={[
+            { label: 'Estimate', value: tdee.tdee, unit: 'kcal' },
+            { label: 'Eaten, average', value: avg(kcalPoints.map((p) => p.y)), unit: 'kcal' },
+          ]}
+        />
+        {!tdee.calibrated && (
+          <div className="stat-range">
+            Still learning — {tdee.daysOfData} days of paired food + weight data so far
+          </div>
+        )}
         <Chart
           yLabel="kcal"
-          series={[{ label: 'Calories eaten', color: 'var(--carbs)', points: kcalPoints, dots: true }]}
+          series={[{ label: 'Calories eaten', color: 'var(--energy)', points: kcalPoints, dots: true }]}
         />
       </section>
 
@@ -124,6 +146,38 @@ export default function Trends({ data }: { data: AppData }) {
       </section>
     </div>
   )
+}
+
+function StatHead({
+  stats,
+}: {
+  stats: { label: string; value: number | null; unit: string; decimals?: number; signed?: boolean }[]
+}) {
+  return (
+    <div className="stat-head">
+      {stats.map((s) => (
+        <div key={s.label}>
+          <div className="stat-label">{s.label}</div>
+          <div className="stat-value">
+            {s.value === null
+              ? '—'
+              : `${s.signed && s.value > 0 ? '+' : ''}${s.value.toFixed(s.decimals ?? 0)}`}
+            <span className="stat-unit">{s.unit}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function avg(xs: number[]): number | null {
+  if (xs.length === 0) return null
+  return xs.reduce((a, b) => a + b, 0) / xs.length
+}
+
+function diff(xs: number[]): number | null {
+  if (xs.length < 2) return null
+  return xs[xs.length - 1] - xs[0]
 }
 
 function makeDayIndex(data: AppData): (date: string) => number {

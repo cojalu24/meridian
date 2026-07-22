@@ -49,8 +49,8 @@ export default function Today({ data, update }: { data: AppData; update: Updater
         <div className="targets-row">
           <MacroRing label="Calories" value={eaten.kcal} target={targets.kcal} unit="" big />
           <MacroBar label="Protein" value={eaten.protein} target={targets.protein} color="var(--protein)" />
-          <MacroBar label="Carbs" value={eaten.carbs} target={targets.carbs} color="var(--carbs)" />
           <MacroBar label="Fat" value={eaten.fat} target={targets.fat} color="var(--fat)" />
+          <MacroBar label="Carbs" value={eaten.carbs} target={targets.carbs} color="var(--carbs)" />
         </div>
         <div className="tdee-note">
           {data.settings.targetMode === 'manual'
@@ -111,13 +111,13 @@ export default function Today({ data, update }: { data: AppData; update: Updater
           <div className="food-row" key={e.id}>
             <div>
               <div className="food-name">{e.foodName}</div>
-              <div className="food-sub">{Math.round(e.grams)} g</div>
+              <div className="food-sub">
+                {e.macros.kcal} 🔥&ensp;{Math.round(e.macros.protein)}P&ensp;
+                {Math.round(e.macros.fat)}F&ensp;{Math.round(e.macros.carbs)}C&ensp;·&ensp;
+                {Math.round(e.grams)} g
+              </div>
             </div>
             <div className="food-macros">
-              <span>{e.macros.kcal} kcal</span>
-              <span className="dim">P {e.macros.protein}</span>
-              <span className="dim">C {e.macros.carbs}</span>
-              <span className="dim">F {e.macros.fat}</span>
               <button className="x" onClick={() => removeEntry(e.id)} title="Remove">
                 ×
               </button>
@@ -269,7 +269,8 @@ function FoodPicker({
           <input type="number" value={grams} min={1} onChange={(e) => setGrams(Math.max(1, Number(e.target.value)))} />
           <span className="dim">grams</span>
           <span className="picker-preview">
-            {macros.kcal} kcal · P {macros.protein} · C {macros.carbs} · F {macros.fat}
+            {macros.kcal} 🔥&ensp;{Math.round(macros.protein)}P&ensp;{Math.round(macros.fat)}F&ensp;
+            {Math.round(macros.carbs)}C
           </span>
           <button className="btn" onClick={() => onPick(selected, grams)}>
             Log it
