@@ -503,6 +503,110 @@ input[type='number'] {
   color: #fff;
 }
 
+.picker-section {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 10px;
+}
+
+.picker-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.picker-row-wrap:last-of-type {
+  border-bottom: none;
+}
+
+.picker-row-wrap .picker-row {
+  border-bottom: none;
+  flex: 1;
+}
+
+.picker-row-name {
+  display: block;
+  font-weight: 600;
+}
+
+.picker-row-sub {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 1px;
+}
+
+.plus {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.plus:hover {
+  background: var(--black);
+  border-color: var(--black);
+  color: #fff;
+}
+
+.qty-input {
+  width: 74px;
+}
+
+.unit-select {
+  min-width: 110px;
+}
+
+/* ---- nutrition breakdown ---- */
+
+.nutrient-group {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 14px 0 6px;
+}
+
+.nutrient-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 150px;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 0;
+}
+
+.nutrient-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.nutrient-track {
+  height: 6px;
+}
+
+.nutrient-amount {
+  font-size: 12.5px;
+  text-align: right;
+}
+
+.nutrient-foot {
+  margin: 12px 0 0;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
 .custom-form input {
   width: 100%;
 }

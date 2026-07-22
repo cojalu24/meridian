@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { AppData } from './types'
 import { loadData, newId, saveData } from './storage'
-import { SEED_EXERCISES, SEED_FOODS } from './seed'
+import { enrichFoods, loadFoodDb } from './foodDb'
+import { SEED_EXERCISES } from './seed'
 import Today from './screens/Today'
 import Workouts from './screens/Workouts'
 import CheckInScreen from './screens/CheckIn'
@@ -24,11 +25,17 @@ type TabId = (typeof TABS)[number]['id']
 export default function App() {
   const [data, setData] = useState<AppData>(() => {
     const d = loadData()
-    // First launch: seed the food + exercise library.
-    if (d.foods.length === 0 && d.exercises.length === 0) {
-      d.foods = SEED_FOODS.map((f) => ({ ...f, id: newId() }))
+    // First launch: seed the exercise library. (Foods come from the bundled
+    // USDA database now — no seed foods needed.)
+    if (d.exercises.length === 0) {
       d.exercises = SEED_EXERCISES.map((e) => ({ ...e, id: newId() }))
     }
+    // Migration: drop old starter foods that were never logged — they lack
+    // micronutrient data and shadow the richer USDA entries in search.
+    const logged = new Set(d.foodLog.map((e) => e.foodId))
+    d.foods = d.foods.filter(
+      (f) => f.source === 'custom' || f.id.startsWith('usda-') || logged.has(f.id),
+    )
     return d
   })
   const [tab, setTab] = useState<TabId>('today')
@@ -36,6 +43,17 @@ export default function App() {
   useEffect(() => {
     saveData(data)
   }, [data])
+
+  // Once the food database loads, back-fill nutrient data onto any library
+  // foods saved before micronutrients existed.
+  useEffect(() => {
+    loadFoodDb().then(() => {
+      setData((d) => {
+        const enriched = enrichFoods(d.foods)
+        return enriched ? { ...d, foods: enriched } : d
+      })
+    })
+  }, [])
 
   const update: Updater = useMemo(() => (fn) => setData((d) => fn(d)), [])
 

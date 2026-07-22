@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { AppData, Food, FoodEntry } from '../types'
+import type { AppData, Food, FoodEntry, Serving } from '../types'
+import { NUTRIENTS } from '../types'
 import type { Updater } from '../App'
 import { addDays, newId, todayISO } from '../storage'
-import { dayTargets, kgToLb, lbToKg, macrosForDay, scaleMacros } from '../engine'
+import { dayTargets, kgToLb, lbToKg, macrosForDay, nutrientsForDay, scaleMacros } from '../engine'
 import { loadFoodDb, searchFoods } from '../foodDb'
 
 export default function Today({ data, update }: { data: AppData; update: Updater }) {
@@ -125,8 +126,64 @@ export default function Today({ data, update }: { data: AppData; update: Updater
           </div>
         ))}
       </section>
+
+      <NutritionCard data={data} date={date} />
     </div>
   )
+}
+
+// ---- daily nutrient breakdown ----
+
+function NutritionCard({ data, date }: { data: AppData; date: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const totals = useMemo(() => nutrientsForDay(data, date), [data, date])
+  const groups = expanded ? ['General', 'Minerals', 'Vitamins'] : ['General']
+
+  return (
+    <section className="card">
+      <div className="row-between">
+        <h2>Nutrition</h2>
+        <button className="btn-small" onClick={() => setExpanded(!expanded)}>
+          {expanded ? 'Show less' : 'All nutrients'}
+        </button>
+      </div>
+      {groups.map((group) => (
+        <div key={group}>
+          {expanded && <div className="nutrient-group">{group}</div>}
+          {NUTRIENTS.filter((n) => n.group === group).map((n) => {
+            const value = totals[n.key] ?? 0
+            const pct = Math.min(100, (value / n.target) * 100)
+            const over = n.limit && value > n.target
+            return (
+              <div className="nutrient-row" key={n.key}>
+                <span className="nutrient-label">{n.label}</span>
+                <div className="bar-track nutrient-track">
+                  <div
+                    className="bar-fill"
+                    style={{
+                      width: `${pct}%`,
+                      background: over ? '#d05252' : n.limit ? 'var(--text-dim)' : 'var(--carbs)',
+                    }}
+                  />
+                </div>
+                <span className="nutrient-amount">
+                  {formatAmount(value, n.unit)} <span className="dim">/ {formatAmount(n.target, n.unit)}</span>
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+      <p className="dim nutrient-foot">
+        Daily totals vs. typical adult targets; limits (sugar, sodium…) turn red when exceeded.
+      </p>
+    </section>
+  )
+}
+
+function formatAmount(v: number, unit: string): string {
+  const rounded = v >= 100 ? Math.round(v) : Math.round(v * 10) / 10
+  return `${rounded} ${unit}`
 }
 
 // ---- pieces ----
@@ -206,6 +263,23 @@ function WeightInput({ initial, unit, onSave }: { initial: number | ''; unit: st
   )
 }
 
+/** Units always available for any food, alongside its own servings. */
+const WEIGHT_UNITS: Serving[] = [
+  { label: 'g', grams: 1 },
+  { label: 'oz', grams: 28.35 },
+  { label: 'lb', grams: 453.59 },
+]
+
+/** Food-specific servings (skipping the plain "100 g" one) plus g/oz/lb. */
+function unitsFor(food: Food): Serving[] {
+  return [...food.servings.filter((s) => s.label !== '100 g'), ...WEIGHT_UNITS]
+}
+
+/** The serving to use for one-tap logging: the food's first real serving, else 100 g. */
+function defaultServing(food: Food): { label: string; grams: number } {
+  return food.servings.find((s) => s.label !== '100 g') ?? { label: '100 g', grams: 100 }
+}
+
 function FoodPicker({
   data,
   onPick,
@@ -217,7 +291,8 @@ function FoodPicker({
 }) {
   const [q, setQ] = useState('')
   const [selected, setSelected] = useState<Food | null>(null)
-  const [grams, setGrams] = useState(100)
+  const [qty, setQty] = useState(1)
+  const [unitIdx, setUnitIdx] = useState(0)
   const [showCustom, setShowCustom] = useState(false)
   const [dbReady, setDbReady] = useState(false)
 
@@ -225,11 +300,33 @@ function FoodPicker({
     loadFoodDb().then(() => setDbReady(true))
   }, [])
 
+  // Most recently logged foods, newest first — the "Recent" list.
+  const recents = useMemo(() => {
+    const seen = new Set<string>()
+    const out: Food[] = []
+    for (let i = data.foodLog.length - 1; i >= 0 && out.length < 8; i--) {
+      const id = data.foodLog[i].foodId
+      if (seen.has(id)) continue
+      seen.add(id)
+      const food = data.foods.find((f) => f.id === id)
+      if (food) out.push(food)
+    }
+    return out
+  }, [data.foodLog, data.foods])
+
   const results = useMemo(
-    () => searchFoods(data.foods, q, 10),
+    () => (q.trim() ? searchFoods(data.foods, q, 10) : recents),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- dbReady re-runs the search once the database arrives
-    [q, data.foods, dbReady],
+    [q, data.foods, recents, dbReady],
   )
+
+  const select = (food: Food) => {
+    setSelected(food)
+    const units = unitsFor(food)
+    const hasServing = units[0].label !== 'g'
+    setUnitIdx(0)
+    setQty(hasServing ? 1 : 100)
+  }
 
   if (showCustom) {
     return (
@@ -238,13 +335,16 @@ function FoodPicker({
         onSave={(food) => {
           onCreateCustom(food)
           setShowCustom(false)
-          setSelected(food)
+          select(food)
         }}
       />
     )
   }
 
   if (selected) {
+    const units = unitsFor(selected)
+    const unit = units[Math.min(unitIdx, units.length - 1)]
+    const grams = Math.max(1, Math.round(qty * unit.grams * 10) / 10)
     const macros = scaleMacros(selected.per100g, grams)
     return (
       <div className="picker">
@@ -254,25 +354,39 @@ function FoodPicker({
             change
           </button>
         </div>
-        <div className="serving-btns">
-          {selected.servings.map((s) => (
-            <button
-              key={s.label}
-              className={`chip ${grams === s.grams ? 'chip-on' : ''}`}
-              onClick={() => setGrams(s.grams)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
         <div className="picker-amount">
-          <input type="number" value={grams} min={1} onChange={(e) => setGrams(Math.max(1, Number(e.target.value)))} />
-          <span className="dim">grams</span>
+          <input
+            className="qty-input"
+            type="number"
+            step="0.25"
+            min="0"
+            value={qty}
+            onChange={(e) => setQty(Math.max(0, parseFloat(e.target.value) || 0))}
+          />
+          <select
+            className="unit-select"
+            value={unitIdx}
+            onChange={(e) => {
+              const idx = Number(e.target.value)
+              const next = units[idx]
+              // Keep the amount sensible when switching between unit scales.
+              if (next.label === 'g' && unit.label !== 'g') setQty(Math.round(qty * unit.grams))
+              else if (unit.label === 'g' && next.label !== 'g') setQty(1)
+              setUnitIdx(idx)
+            }}
+          >
+            {units.map((u, i) => (
+              <option key={u.label + i} value={i}>
+                {u.label}
+              </option>
+            ))}
+          </select>
+          <span className="dim">= {Math.round(grams)} g</span>
           <span className="picker-preview">
             {macros.kcal} 🔥&ensp;{Math.round(macros.protein)}P&ensp;{Math.round(macros.fat)}F&ensp;
             {Math.round(macros.carbs)}C
           </span>
-          <button className="btn" onClick={() => onPick(selected, grams)}>
+          <button className="btn" onClick={() => onPick(selected, grams)} disabled={grams <= 0}>
             Log it
           </button>
         </div>
@@ -285,19 +399,31 @@ function FoodPicker({
       <input
         autoFocus
         className="search"
-        placeholder="Search foods…"
+        placeholder="Search 8,000+ foods…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
+      {!q.trim() && recents.length > 0 && <div className="picker-section">Recent</div>}
       <div className="picker-results">
         {results.map((f) => (
-          <button key={f.id} className="picker-row" onClick={() => {
-            setSelected(f)
-            setGrams(f.servings[1]?.grams ?? 100)
-          }}>
-            <span>{f.name}</span>
-            <span className="dim">{f.per100g.kcal} kcal / 100g</span>
-          </button>
+          <div key={f.id} className="picker-row-wrap">
+            <button className="picker-row" onClick={() => select(f)}>
+              <span>
+                <span className="picker-row-name">{f.name}</span>
+                <span className="picker-row-sub">
+                  {f.per100g.kcal} 🔥&ensp;{Math.round(f.per100g.protein)}P&ensp;
+                  {Math.round(f.per100g.fat)}F&ensp;{Math.round(f.per100g.carbs)}C&ensp;·&ensp;100 g
+                </span>
+              </span>
+            </button>
+            <button
+              className="plus"
+              title={`Log ${defaultServing(f).label}`}
+              onClick={() => onPick(f, defaultServing(f).grams)}
+            >
+              +
+            </button>
+          </div>
         ))}
         {results.length === 0 && <div className="empty-hint">No matches</div>}
         <button className="link picker-custom" onClick={() => setShowCustom(true)}>

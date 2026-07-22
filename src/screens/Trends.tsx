@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { AppData, CheckIn } from '../types'
 import Chart from '../components/Chart'
-import { estimateTdee, exerciseHistory, kgToLb, weightTrend } from '../engine'
+import { estimateTdee, exerciseHistory, expenditureSeries, kgToLb, weightTrend } from '../engine'
 
 // All history in one place: weight trend, calories, how you've been feeling,
 // and strength progress per exercise.
@@ -101,7 +101,15 @@ export default function Trends({ data }: { data: AppData }) {
         )}
         <Chart
           yLabel="kcal"
-          series={[{ label: 'Calories eaten', color: 'var(--energy)', points: kcalPoints, dots: true }]}
+          series={[
+            { label: 'Calories eaten', color: '#f2c4b3', points: kcalPoints, dots: true },
+            {
+              label: 'Expenditure trend',
+              color: 'var(--energy)',
+              points: expenditureSeries(data).map((p) => ({ x: dayIndex(p.date), y: p.tdee })),
+              dots: true,
+            },
+          ]}
         />
       </section>
 

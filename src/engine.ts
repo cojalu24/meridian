@@ -133,6 +133,42 @@ export function macrosForDay(data: AppData, date: ISODate): Macros {
     )
 }
 
+/**
+ * Daily micronutrient totals, summed from the logged foods' per-100g data.
+ * Foods without nutrient data (older custom foods) simply contribute zero, so
+ * the count is a floor, not an exaggeration.
+ */
+export function nutrientsForDay(data: AppData, date: ISODate): Record<string, number> {
+  const totals: Record<string, number> = {}
+  for (const e of data.foodLog) {
+    if (e.date !== date) continue
+    const food = data.foods.find((f) => f.id === e.foodId)
+    if (!food?.nutrients) continue
+    const factor = e.grams / 100
+    for (const [key, per100] of Object.entries(food.nutrients)) {
+      totals[key] = (totals[key] ?? 0) + per100 * factor
+    }
+  }
+  return totals
+}
+
+/**
+ * Expenditure (TDEE) estimate over time: for each day with food logged, the
+ * estimate the engine would have given using only data up to that day. This is
+ * the "trend line" of your metabolism learning over time.
+ */
+export function expenditureSeries(data: AppData): { date: ISODate; tdee: number }[] {
+  const dates = [...new Set(data.foodLog.map((e) => e.date))].sort()
+  return dates.map((date) => {
+    const truncated: AppData = {
+      ...data,
+      weights: data.weights.filter((w) => w.date <= date),
+      foodLog: data.foodLog.filter((e) => e.date <= date),
+    }
+    return { date, tdee: estimateTdee(truncated).tdee }
+  })
+}
+
 export function scaleMacros(per100g: Macros, grams: number): Macros {
   const f = grams / 100
   return {

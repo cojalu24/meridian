@@ -4,7 +4,15 @@
 
 import type { Food } from './types'
 
-type CompactFood = { n: string; k: number; p: number; c: number; f: number; s: [string, number][] }
+type CompactFood = {
+  n: string
+  k: number
+  p: number
+  c: number
+  f: number
+  s: [string, number][]
+  x?: Record<string, number>
+}
 
 let db: Food[] = []
 let loadPromise: Promise<void> | null = null
@@ -17,6 +25,7 @@ export function loadFoodDb(): Promise<void> {
         id: `usda-${i}`,
         name: r.n,
         per100g: { kcal: r.k, protein: r.p, carbs: r.c, fat: r.f },
+        nutrients: r.x,
         servings: [{ label: '100 g', grams: 100 }, ...r.s.map(([label, grams]) => ({ label, grams }))],
         source: 'usda' as const,
       }))
@@ -27,6 +36,24 @@ export function loadFoodDb(): Promise<void> {
       db = []
     })
   return loadPromise
+}
+
+/**
+ * Back-fill nutrient data onto library foods saved before the database carried
+ * micronutrients, matching by name. Returns null when nothing needed updating.
+ */
+export function enrichFoods(foods: Food[]): Food[] | null {
+  if (db.length === 0) return null
+  let changed = false
+  const byName = new Map(db.map((f) => [f.name.toLowerCase(), f]))
+  const out = foods.map((f) => {
+    if (f.nutrients || f.source === 'custom') return f
+    const match = byName.get(f.name.toLowerCase())
+    if (!match?.nutrients) return f
+    changed = true
+    return { ...f, nutrients: match.nutrients }
+  })
+  return changed ? out : null
 }
 
 /**

@@ -22,10 +22,53 @@ export interface Food {
   brand?: string
   /** Nutrition per 100g. Everything else is derived from this. */
   per100g: Macros
+  /** Micronutrients per 100g, keyed by NUTRIENTS keys. */
+  nutrients?: Record<string, number>
   servings: Serving[]
   source: 'usda' | 'openfoodfacts' | 'custom'
   barcode?: string
 }
+
+/**
+ * Micronutrient definitions: display metadata + generic adult daily targets
+ * (US RDA/AI where one exists, recommended limits where marked). Amounts per
+ * 100g live in Food.nutrients under these keys.
+ */
+export interface NutrientDef {
+  key: string
+  label: string
+  unit: 'g' | 'mg' | 'µg'
+  /** Daily target; for `limit` nutrients this is a ceiling, not a goal. */
+  target: number
+  limit?: boolean
+  group: 'General' | 'Minerals' | 'Vitamins'
+}
+
+export const NUTRIENTS: NutrientDef[] = [
+  { key: 'fib', label: 'Fiber', unit: 'g', target: 30, group: 'General' },
+  { key: 'sug', label: 'Sugars', unit: 'g', target: 50, limit: true, group: 'General' },
+  { key: 'sat', label: 'Saturated fat', unit: 'g', target: 22, limit: true, group: 'General' },
+  { key: 'tra', label: 'Trans fat', unit: 'g', target: 2, limit: true, group: 'General' },
+  { key: 'chol', label: 'Cholesterol', unit: 'mg', target: 300, limit: true, group: 'General' },
+  { key: 'na', label: 'Sodium', unit: 'mg', target: 2300, limit: true, group: 'General' },
+  { key: 'k', label: 'Potassium', unit: 'mg', target: 3400, group: 'Minerals' },
+  { key: 'ca', label: 'Calcium', unit: 'mg', target: 1000, group: 'Minerals' },
+  { key: 'fe', label: 'Iron', unit: 'mg', target: 8, group: 'Minerals' },
+  { key: 'mg', label: 'Magnesium', unit: 'mg', target: 420, group: 'Minerals' },
+  { key: 'p', label: 'Phosphorus', unit: 'mg', target: 700, group: 'Minerals' },
+  { key: 'zn', label: 'Zinc', unit: 'mg', target: 11, group: 'Minerals' },
+  { key: 'va', label: 'Vitamin A', unit: 'µg', target: 900, group: 'Vitamins' },
+  { key: 'vc', label: 'Vitamin C', unit: 'mg', target: 90, group: 'Vitamins' },
+  { key: 'vd', label: 'Vitamin D', unit: 'µg', target: 20, group: 'Vitamins' },
+  { key: 've', label: 'Vitamin E', unit: 'mg', target: 15, group: 'Vitamins' },
+  { key: 'vk', label: 'Vitamin K', unit: 'µg', target: 120, group: 'Vitamins' },
+  { key: 'fol', label: 'Folate', unit: 'µg', target: 400, group: 'Vitamins' },
+  { key: 'b1', label: 'Thiamin (B1)', unit: 'mg', target: 1.2, group: 'Vitamins' },
+  { key: 'b2', label: 'Riboflavin (B2)', unit: 'mg', target: 1.3, group: 'Vitamins' },
+  { key: 'b3', label: 'Niacin (B3)', unit: 'mg', target: 16, group: 'Vitamins' },
+  { key: 'b6', label: 'Vitamin B6', unit: 'mg', target: 1.7, group: 'Vitamins' },
+  { key: 'b12', label: 'Vitamin B12', unit: 'µg', target: 2.4, group: 'Vitamins' },
+]
 
 export interface FoodEntry {
   id: string
