@@ -1,0 +1,13 @@
+{
+  "name": "meridian-desktop",
+  "version": "0.1.0",
+  "description": "Meridian — private, open wellness tracking",
+  "main": "main.js",
+  "type": "commonjs",
+  "productName": "Meridian",
+  "license": "MIT",
+  "devDependencies": {
+    "@electron/packager": "^20.0.3",
+    "electron": "^43.2.0"
+  }
+}
